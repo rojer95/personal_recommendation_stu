@@ -112,11 +112,16 @@ def get_recommend(user_profile, rank, user_id, count=10):
 
 if __name__ == "__main__":
     user_id = "1"
+    # 对item取平均分
     ave = read.get_ave_score("./data/ratings.txt")
+    # 对item根据category进行划分并排序，排序按item平均分进行降序。得到 category排行榜
     rank, item_cate = read.get_cate_rank(ave, "./data/movies.txt")
+    # 计算user对每种category的rating归一化值并降序排列，得到user profile
     user_profile = get_user_profile("./data/ratings.txt", item_cate)
     print("user_profile:", user_profile[user_id])
+    # user profile 与 category排行榜 结合计算推荐item
     result = get_recommend(user_profile, rank, user_id)
+
     infos = read.get_item_info("./data/movies.txt")
     for (item, score) in result:
         if item in infos:

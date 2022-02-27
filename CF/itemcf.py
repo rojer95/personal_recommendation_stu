@@ -13,12 +13,19 @@ import read
 
 
 def itemcf_get_contribute(type, user_click_count, click_time1=0, click_time2=0):
+    """
+    @Description: 计算item与item的贡献度
+    @Args:
+        type: 贡献度计算类型（1-基础|2-根据用户点击计算|3-根据item之间点击时间计算）
+    @Returns:
+        number: 贡献度
+    """
 
-    # 用户点击惩罚贡献度，用户点击item越多，贡献度越小
+    # 用户点击的item越多，贡献度越小
     if type == 2:
         return 1 / math.log10(1 + user_click_count)
 
-    # 用户点击的时间离现在越早，贡献度越小
+    # 两个item点击时间间隔越长，贡献度越小
     if type == 3:
         t = abs(click_time1 - click_time2) / (24 * 60 * 60)
         return 1 / (1 + t)
@@ -30,11 +37,12 @@ def itemcf_get_contribute(type, user_click_count, click_time1=0, click_time2=0):
 def itemcf(user_click, type):
 
     """
-    @Description: itemcf
+    @Description: itemcf 计算item2item贡献度矩阵
     @Args:
         user_click: 用户点击数据
         type: 贡献度计算方式，1-基础 2-按用户点击数量进行惩罚
     @Returns:
+        item_sim_score: {item: [(item, sim_score)]}
     """
 
     record = {}
@@ -79,6 +87,15 @@ def itemcf(user_click, type):
 
 
 def recommend_itemcf(item_sim_score, user_click):
+    """
+    @Description: 根据item2item贡献度矩阵与用户点击item，生成用户的推荐item集合
+    @Args:
+        item_sim_score: item2item贡献度矩阵
+        user_click: 用户点击
+    @Returns:
+        dict: {user: [(item_id, score)]}
+    """
+
     record = {}
     topk = 5
     click_usecount = 3
@@ -93,6 +110,14 @@ def recommend_itemcf(item_sim_score, user_click):
 
 
 def debug_recommend(fix_item_id, item_sim_score, infos):
+    """
+    @Description: debug item的相识item信息详情
+    @Args:
+        fix_item_id: 解决的item id
+        item_sim_score: item2item相似度矩阵
+        infos: item信息字典
+    """
+
     if fix_item_id in infos:
         print(infos[fix_item_id])
 

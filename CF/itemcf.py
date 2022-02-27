@@ -65,6 +65,7 @@ def itemcf(user_click, type):
     for i in record.keys():
         for j in record[i].keys():
             item_sim_score.setdefault(i, {})
+            # similar_score = contribute / sqrt(click_count(item_i) * click_count(item_j))
             item_sim_score[i][j] = record[i][j] / math.sqrt(
                 click_times[i] * click_times[j]
             )

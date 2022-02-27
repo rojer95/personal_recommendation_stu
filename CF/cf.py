@@ -34,25 +34,25 @@ def itemcf_get_contribute(type, user_click_count, click_time1=0, click_time2=0):
     return 1
 
 
-def itemcf(user_click, type):
+def cf(click_data, type):
 
     """
-    @Description: itemcf 计算item2item贡献度矩阵
+    @Description: 计算贡献度矩阵
     @Args:
-        user_click: 用户点击数据
+        click_data: 点击数据
         type: 贡献度计算方式，1-基础 2-按用户点击数量进行惩罚
     @Returns:
-        item_sim_score: {item: [(item, sim_score)]}
+        sim_score: {item: [(item, sim_score)]}
     """
 
     record = {}
-    click_times = {}
+    click_count = {}
     topk = 10
-    for user, items in user_click.items():
+    for key, items in click_data.items():
         for i in range(len(items)):
             item_id_i = items[i][0]
-            click_times.setdefault(item_id_i, 0)
-            click_times[item_id_i] += 1
+            click_count.setdefault(item_id_i, 0)
+            click_count[item_id_i] += 1
             for j in range(i + 1, len(items)):
                 item_id_j = items[j][0]
                 click_time1 = items[i][1]
@@ -69,21 +69,19 @@ def itemcf(user_click, type):
                     type, len(items), click_time1, click_time2
                 )
 
-    item_sim_score = {}
+    sim_score = {}
     for i in record.keys():
         for j in record[i].keys():
-            item_sim_score.setdefault(i, {})
+            sim_score.setdefault(i, {})
             # similar_score = contribute / sqrt(click_count(item_i) * click_count(item_j))
-            item_sim_score[i][j] = record[i][j] / math.sqrt(
-                click_times[i] * click_times[j]
-            )
+            sim_score[i][j] = record[i][j] / math.sqrt(click_count[i] * click_count[j])
 
-    for item_id, list in item_sim_score.items():
-        item_sim_score[item_id] = sorted(
+    for item_id, list in sim_score.items():
+        sim_score[item_id] = sorted(
             list.items(), key=operator.itemgetter(1), reverse=True
         )[:topk]
 
-    return item_sim_score
+    return sim_score
 
 
 def recommend_itemcf(item_sim_score, user_click):
@@ -109,7 +107,7 @@ def recommend_itemcf(item_sim_score, user_click):
     return record
 
 
-def debug_recommend(fix_item_id, item_sim_score, infos):
+def debug_itemcf_recommend(fix_item_id, item_sim_score, infos):
     """
     @Description: debug item的相识item信息详情
     @Args:
@@ -129,18 +127,18 @@ def debug_recommend(fix_item_id, item_sim_score, infos):
                 print(infos[item_id], score)
 
 
-if __name__ == "__main__":
+def itemcf():
     infos = read.get_item_info("./data/movies.txt")
     user_click = read.get_user_click("./data/ratings.txt")
 
     contribute_type = 3
-    item_sim_score = itemcf(user_click, contribute_type)
+    item_sim_score = cf(user_click, contribute_type)
 
     fix_item_id = "1"
 
     print("---------------------")
     print("-  debug_recommend  -")
-    debug_recommend(fix_item_id, item_sim_score, infos)
+    debug_itemcf_recommend(fix_item_id, item_sim_score, infos)
 
     user_recommends = recommend_itemcf(item_sim_score, user_click)
     print("---------------------")
@@ -155,3 +153,67 @@ if __name__ == "__main__":
     for (item_id, score) in user_recommend[:10]:
         if item_id in infos:
             print(infos[item_id], score)
+
+
+def transfer_item_2_user(userclick):
+    item_click = {}
+    for user_id, items in userclick.items():
+        for (item_id, timestamp) in items:
+            item_click.setdefault(item_id, [])
+            item_click[item_id].append((user_id, timestamp))
+    return item_click
+
+
+def recommend_usercf(user_sim_score, user_click):
+    """
+    @Description: 根据user2user贡献度矩阵与用户点击item，生成用户的推荐item集合
+    @Args:
+        user_sim_score: user2user贡献度矩阵
+        user_click: 用户点击
+    @Returns:
+        dict: {user: [(item_id, score)]}
+    """
+
+    record = {}
+    topk = 5
+    click_usecount = 3
+    for user_id in user_click.keys():
+        if user_id not in user_sim_score:
+            continue
+        record.setdefault(user_id, [])
+        for (user_id_j, score) in user_sim_score[user_id][:click_usecount]:
+            if user_id_j not in user_click:
+                continue
+            for (item_id, t) in user_click[user_id_j][:topk]:
+                record[user_id].append((item_id, score))
+
+    return record
+
+
+def usercf():
+    infos = read.get_item_info("./data/movies.txt")
+    user_click = read.get_user_click("./data/ratings.txt")
+
+    contribute_type = 3
+    item_click = transfer_item_2_user(user_click)
+    user_sim_score = cf(item_click, contribute_type)
+    fix_user_id = "1"
+
+    user_recommends = recommend_usercf(user_sim_score, user_click)
+    print("---------------------")
+    print("-  user_recommend   -")
+
+    fix_user_id = "1"
+    if fix_user_id not in user_recommends:
+        print("recommend not exist")
+        sys.exit()
+    user_recommend = user_recommends[fix_user_id]
+
+    for (item_id, score) in user_recommend[:10]:
+        if item_id in infos:
+            print(infos[item_id], score)
+
+
+if __name__ == "__main__":
+    itemcf()
+    usercf()
